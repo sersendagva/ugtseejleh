@@ -15,6 +15,7 @@ display:flex;
 justify-content:center;
 align-items:center;
 height:100vh;
+margin:0;
 }
 
 .container{
@@ -23,21 +24,24 @@ padding:40px;
 border-radius:20px;
 width:600px;
 text-align:center;
+box-shadow:0 10px 30px rgba(0,0,0,0.5);
 }
 
 .word{
-font-size:40px;
+font-size:42px;
 margin:30px;
 color:#fbbf24;
+font-weight:bold;
 }
 
 input{
 font-size:24px;
-padding:10px;
+padding:12px;
 width:80%;
 border-radius:10px;
 border:none;
 text-align:center;
+outline:none;
 }
 
 button{
@@ -47,6 +51,12 @@ font-size:18px;
 border:none;
 border-radius:10px;
 cursor:pointer;
+background:#fbbf24;
+font-weight:bold;
+}
+
+button:hover{
+background:#f59e0b;
 }
 
 .correct{
@@ -76,6 +86,13 @@ margin-top:10px;
 height:100%;
 background:#fbbf24;
 width:0%;
+transition:0.3s;
+}
+
+.score{
+margin-top:10px;
+font-size:18px;
+color:#38bdf8;
 }
 
 </style>
@@ -105,6 +122,10 @@ width:0%;
 Буруу: <span id="wrong">0</span> |
 Нийт: <span id="total">0</span>
 
+<div class="score">
+Оноо: <span id="score">0%</span>
+</div>
+
 <div class="progress">
 <div class="bar" id="bar"></div>
 </div>
@@ -127,120 +148,185 @@ const wordEl = document.getElementById("englishWord")
 const input = document.getElementById("answerInput")
 const result = document.getElementById("result")
 
+function normalize(text){
+    return text.toLowerCase().trim().replace(/\s+/g," ")
+}
+
 function startTest(){
     loadCSV()
-    input.disabled = false
+    input.disabled=false
 }
 
 function parseCSV(text){
-    // BOM тэмдэгт арилгах
+
     text = text.replace(/^\uFEFF/, "")
 
     const lines = text.split(/\r?\n/)
-    const arr = []
+    const arr=[]
 
     for(let line of lines){
-        line = line.trim()
-        if(line === "") continue
 
-        const p = line.split(",")
-        if(p.length >= 2){
+        line=line.trim()
+        if(line==="") continue
+
+        const p=line.split(",")
+
+        if(p.length>=2){
             arr.push({
-                english: p[0].trim(),
-                mongol: p[1].trim()
+                english:p[0].trim(),
+                mongol:p[1].trim()
             })
         }
     }
+
     return arr
 }
 
 async function loadCSV(){
+
     try{
-        const r = await fetch("word1.csv")
-        const text = await r.text()
-        pairs = parseCSV(text)
+
+        const r=await fetch("word1.csv")
+        const text=await r.text()
+
+        pairs=parseCSV(text)
+
+        if(pairs.length===0){
+            wordEl.innerText="CSV файл хоосон байна"
+            return
+        }
 
         shuffle()
-        current = 0
-        correct = 0
-        wrong = 0
-        wrongPairs = []
 
-        document.getElementById("total").innerText = pairs.length
+        current=0
+        correct=0
+        wrong=0
+        wrongPairs=[]
+
+        document.getElementById("total").innerText=pairs.length
+
         updateStats()
+
         showWord()
 
     }catch(e){
-        // Алдааг silent болгож input болон үгийг идэвхгүй болгоно
-        input.disabled = true
-        wordEl.innerText = "Тест эхлэх боломжгүй байна"
+
+        wordEl.innerText="CSV файл олдсонгүй"
+        input.disabled=true
+
     }
+
 }
 
 function shuffle(){
-    for(let i=pairs.length-1; i>0; i--){
-        const j = Math.floor(Math.random() * (i+1))
-        [pairs[i], pairs[j]] = [pairs[j], pairs[i]]
+
+    for(let i=pairs.length-1;i>0;i--){
+
+        const j=Math.floor(Math.random()*(i+1))
+        ;[pairs[i],pairs[j]]=[pairs[j],pairs[i]]
+
     }
+
 }
 
 function showWord(){
-    if(current >= pairs.length){
-        wordEl.innerText = "Дууслаа"
-        input.disabled = true
+
+    if(current>=pairs.length){
+
+        wordEl.innerText="🎉 Тест дууслаа"
+
+        input.disabled=true
+
+        const percent=Math.round((correct/pairs.length)*100)
+
+        result.innerHTML="<div class='score'>Таны оноо: "+percent+"%</div>"
+
         return
+
     }
 
-    wordEl.innerText = pairs[current].english
-    input.value = ""
+    wordEl.innerText=pairs[current].english
+
+    input.value=""
     input.focus()
+
 }
 
 function checkAnswer(){
-    if(current >= pairs.length) return
 
-    const answer = input.value.trim()
-    const correctWord = pairs[current].mongol
+    if(current>=pairs.length) return
 
-    if(answer === correctWord){
+    const answer=normalize(input.value)
+    const correctWord=normalize(pairs[current].mongol)
+
+    if(answer===correctWord){
+
         correct++
-        result.innerHTML = "<div class='correct'>✔ Зөв</div>"
+
+        result.innerHTML="<div class='correct'>✔ Зөв</div>"
+
     }else{
+
         wrong++
+
         wrongPairs.push(pairs[current])
-        result.innerHTML = "<div class='wrong'>❌ Буруу → "+correctWord+"</div>"
+
+        result.innerHTML="<div class='wrong'>❌ Буруу → "+pairs[current].mongol+"</div>"
+
     }
 
     current++
+
     updateStats()
-    showWord()
+
+    setTimeout(showWord,1000)
+
 }
 
 function updateStats(){
-    document.getElementById("correct").innerText = correct
-    document.getElementById("wrong").innerText = wrong
 
-    const total = correct + wrong
-    const percent = Math.round((correct/total)*100) || 0
-    document.getElementById("bar").style.width = percent+"%"
+    document.getElementById("correct").innerText=correct
+    document.getElementById("wrong").innerText=wrong
+
+    const answered=correct+wrong
+    const total=pairs.length
+
+    const percent=Math.round((answered/total)*100)
+
+    document.getElementById("bar").style.width=percent+"%"
+
+    const score=Math.round((correct/answered)*100)||0
+
+    document.getElementById("score").innerText=score+"%"
+
 }
 
 function retryWrong(){
-    if(wrongPairs.length === 0) return
 
-    pairs = [...wrongPairs]
-    wrongPairs = []
-    current = 0
-    correct = 0
-    wrong = 0
+    if(wrongPairs.length===0) return
+
+    pairs=[...wrongPairs]
+
+    wrongPairs=[]
+
+    current=0
+    correct=0
+    wrong=0
 
     shuffle()
+
+    document.getElementById("total").innerText=pairs.length
+
     updateStats()
+
     showWord()
+
 }
 
-input.addEventListener("keypress", function(e){
-    if(e.key === "Enter") checkAnswer()
+input.addEventListener("keypress",function(e){
+
+    if(e.key==="Enter") checkAnswer()
+
 })
 
 </script>
