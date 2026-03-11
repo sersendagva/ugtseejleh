@@ -123,177 +123,124 @@ let correct=0
 let wrong=0
 let wrongPairs=[]
 
-const wordEl=document.getElementById("englishWord")
-const input=document.getElementById("answerInput")
-const result=document.getElementById("result")
+const wordEl = document.getElementById("englishWord")
+const input = document.getElementById("answerInput")
+const result = document.getElementById("result")
 
 function startTest(){
-
-loadCSV()
-input.disabled=false
-
+    loadCSV()
+    input.disabled = false
 }
 
 function parseCSV(text){
+    // BOM тэмдэгт арилгах
+    text = text.replace(/^\uFEFF/, "")
 
-// BOM тэмдэгт арилгах
-text=text.replace(/^\uFEFF/, "")
+    const lines = text.split(/\r?\n/)
+    const arr = []
 
-const lines=text.split(/\r?\n/)
+    for(let line of lines){
+        line = line.trim()
+        if(line === "") continue
 
-const arr=[]
-
-for(let line of lines){
-
-line=line.trim()
-
-if(line==="") continue
-
-const p=line.split(",")
-
-if(p.length>=2){
-
-arr.push({
-english:p[0].trim(),
-mongol:p[1].trim()
-})
-
-}
-
-}
-
-return arr
-
+        const p = line.split(",")
+        if(p.length >= 2){
+            arr.push({
+                english: p[0].trim(),
+                mongol: p[1].trim()
+            })
+        }
+    }
+    return arr
 }
 
 async function loadCSV(){
+    try{
+        const r = await fetch("word1.csv")
+        const text = await r.text()
+        pairs = parseCSV(text)
 
-try{
+        shuffle()
+        current = 0
+        correct = 0
+        wrong = 0
+        wrongPairs = []
 
-const r=await fetch("word1.csv")
+        document.getElementById("total").innerText = pairs.length
+        updateStats()
+        showWord()
 
-const text=await r.text()
-
-pairs=parseCSV(text)
-
-shuffle()
-
-current=0
-correct=0
-wrong=0
-wrongPairs=[]
-
-document.getElementById("total").innerText=pairs.length
-
-updateStats()
-
-showWord()
-
-}catch(e){
-
-wordEl.innerText="word1.csv олдсонгүй"
-
-}
-
+    }catch(e){
+        // Алдааг silent болгож input болон үгийг идэвхгүй болгоно
+        input.disabled = true
+        wordEl.innerText = "Тест эхлэх боломжгүй байна"
+    }
 }
 
 function shuffle(){
-
-for(let i=pairs.length-1;i>0;i--){
-
-const j=Math.floor(Math.random()*(i+1))
-
-[pairs[i],pairs[j]]=[pairs[j],pairs[i]]
-
-}
-
+    for(let i=pairs.length-1; i>0; i--){
+        const j = Math.floor(Math.random() * (i+1))
+        [pairs[i], pairs[j]] = [pairs[j], pairs[i]]
+    }
 }
 
 function showWord(){
+    if(current >= pairs.length){
+        wordEl.innerText = "Дууслаа"
+        input.disabled = true
+        return
+    }
 
-if(current>=pairs.length){
-
-wordEl.innerText="Дууслаа"
-input.disabled=true
-return
-
-}
-
-wordEl.innerText=pairs[current].english
-
-input.value=""
-input.focus()
-
+    wordEl.innerText = pairs[current].english
+    input.value = ""
+    input.focus()
 }
 
 function checkAnswer(){
+    if(current >= pairs.length) return
 
-if(current>=pairs.length)return
+    const answer = input.value.trim()
+    const correctWord = pairs[current].mongol
 
-const answer=input.value.trim()
-const correctWord=pairs[current].mongol
+    if(answer === correctWord){
+        correct++
+        result.innerHTML = "<div class='correct'>✔ Зөв</div>"
+    }else{
+        wrong++
+        wrongPairs.push(pairs[current])
+        result.innerHTML = "<div class='wrong'>❌ Буруу → "+correctWord+"</div>"
+    }
 
-if(answer===correctWord){
-
-correct++
-
-result.innerHTML="<div class='correct'>✔ Зөв</div>"
-
-}else{
-
-wrong++
-
-wrongPairs.push(pairs[current])
-
-result.innerHTML="<div class='wrong'>❌ Буруу → "+correctWord+"</div>"
-
-}
-
-current++
-
-updateStats()
-
-showWord()
-
+    current++
+    updateStats()
+    showWord()
 }
 
 function updateStats(){
+    document.getElementById("correct").innerText = correct
+    document.getElementById("wrong").innerText = wrong
 
-document.getElementById("correct").innerText=correct
-document.getElementById("wrong").innerText=wrong
-
-const total=correct+wrong
-
-const percent=Math.round((correct/total)*100)||0
-
-document.getElementById("bar").style.width=percent+"%"
-
+    const total = correct + wrong
+    const percent = Math.round((correct/total)*100) || 0
+    document.getElementById("bar").style.width = percent+"%"
 }
 
 function retryWrong(){
+    if(wrongPairs.length === 0) return
 
-if(wrongPairs.length===0)return
+    pairs = [...wrongPairs]
+    wrongPairs = []
+    current = 0
+    correct = 0
+    wrong = 0
 
-pairs=[...wrongPairs]
-
-wrongPairs=[]
-
-current=0
-correct=0
-wrong=0
-
-shuffle()
-
-updateStats()
-
-showWord()
-
+    shuffle()
+    updateStats()
+    showWord()
 }
 
-input.addEventListener("keypress",function(e){
-
-if(e.key==="Enter")checkAnswer()
-
+input.addEventListener("keypress", function(e){
+    if(e.key === "Enter") checkAnswer()
 })
 
 </script>
